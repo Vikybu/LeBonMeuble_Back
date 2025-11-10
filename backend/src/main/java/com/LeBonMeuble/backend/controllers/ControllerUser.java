@@ -1,8 +1,7 @@
 package com.LeBonMeuble.backend.controllers;
 
-import com.LeBonMeuble.backend.models.ModelUser;
+import com.LeBonMeuble.backend.entities.EntityUser;
 import com.LeBonMeuble.backend.services.ServiceUser;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,7 +21,7 @@ public class ControllerUser {
     }
 
     @PostMapping("/creationUser")
-    public ResponseEntity<String> addUser(@RequestBody ModelUser user) {
+    public ResponseEntity<String> addUser(@RequestBody EntityUser user) {
         try {
             // Hash du mot de passe
             String hashedPassword = passwordEncoder.encode(user.getPassword());
