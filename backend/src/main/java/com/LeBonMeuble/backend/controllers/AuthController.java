@@ -40,19 +40,23 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody EntityUser user){
+    public ResponseEntity<?> login(@RequestBody EntityUser user) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword())
             );
+
             if (authentication.isAuthenticated()) {
+                EntityUser dbUser = userRepository.findByEmail(user.getEmail());
+
                 Map<String, Object> authData = new HashMap<>();
-                authData.put("token", jwtUtils.generateToken(user.getEmail(), user.getFirstname()));
+                authData.put("token", jwtUtils.generateToken(dbUser, dbUser.getFirstname()));
                 authData.put("type", "Bearer");
                 return ResponseEntity.ok(authData);
             }
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
-        } catch(org.springframework.security.core.AuthenticationException e) {
+        } catch (org.springframework.security.core.AuthenticationException e) {
             log.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
         }
