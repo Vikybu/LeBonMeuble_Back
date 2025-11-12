@@ -3,7 +3,6 @@ package com.LeBonMeuble.backend.configuration;
 import com.LeBonMeuble.backend.filter.JwtFilter;
 import com.LeBonMeuble.backend.services.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.User;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -49,7 +48,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // JWT = stateless
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/register", "/error", "/creationUser").permitAll()
+                        .requestMatchers("/login", "/register", "/error", "/creationUser", "/color", "/type", "/material", "/addFurniture").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

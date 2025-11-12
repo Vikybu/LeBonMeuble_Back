@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class ControllerUser {
+public class UserController {
 
     private final PasswordEncoder passwordEncoder;
     private final ServiceUser serviceUser;
 
-    public ControllerUser(PasswordEncoder passwordEncoder, ServiceUser serviceUser) {
+    public UserController(PasswordEncoder passwordEncoder, ServiceUser serviceUser) {
         this.passwordEncoder = passwordEncoder;
         this.serviceUser = serviceUser;
     }

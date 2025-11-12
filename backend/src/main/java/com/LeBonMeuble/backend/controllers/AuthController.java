@@ -50,7 +50,7 @@ public class AuthController {
                 EntityUser dbUser = userRepository.findByEmail(user.getEmail());
 
                 Map<String, Object> authData = new HashMap<>();
-                authData.put("token", jwtUtils.generateToken(dbUser, dbUser.getFirstname()));
+                authData.put("token", jwtUtils.generateToken(dbUser, dbUser.getFirstname(), dbUser.getId()));
                 authData.put("type", "Bearer");
                 return ResponseEntity.ok(authData);
             }
