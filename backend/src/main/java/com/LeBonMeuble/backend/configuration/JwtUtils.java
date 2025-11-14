@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -24,7 +26,7 @@ public class JwtUtils {
     @Value("${app.expiration-time}")
     private Long expirationTime;
 
-    public String generateToken(UserDetails userDetails, String firstname, Long id){
+    public String generateToken(UserDetails userDetails, String firstname, Long id) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("id", id);
         claims.put("firstname", firstname);
@@ -39,7 +41,7 @@ public class JwtUtils {
         return createToken(claims, userDetails.getUsername());
     }
 
-    private String createToken(Map<String, Object> claims, String email){
+    private String createToken(Map<String, Object> claims, String email) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(email)
@@ -49,12 +51,12 @@ public class JwtUtils {
                 .compact();
     }
 
-    private Key getSignKey(){
+    private Key getSignKey() {
         byte[] keyBytes = secretKey.getBytes();
         return new SecretKeySpec(keyBytes, SignatureAlgorithm.HS256.getJcaName());
     }
 
-    public Boolean validateToken(String token, UserDetails userDetails){
+    public Boolean validateToken(String token, UserDetails userDetails) {
         String email = extractEmail(token);
         return (email.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
@@ -67,7 +69,7 @@ public class JwtUtils {
         return extractClaim(token, Claims::getSubject);
     }
 
-    private Date extractExpirationDate(String token){
+    private Date extractExpirationDate(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
@@ -76,10 +78,11 @@ public class JwtUtils {
         return claimsResolver.apply(claims);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .setSigningKey(getSignKey())
                 .parseClaimsJws(token)
                 .getBody();
     }
+
 }

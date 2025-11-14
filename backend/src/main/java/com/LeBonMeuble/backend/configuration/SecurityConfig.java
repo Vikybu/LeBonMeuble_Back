@@ -2,6 +2,7 @@ package com.LeBonMeuble.backend.configuration;
 
 import com.LeBonMeuble.backend.filter.JwtFilter;
 import com.LeBonMeuble.backend.services.CustomUserDetailsService;
+import com.LeBonMeuble.backend.configuration.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,28 +49,45 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // JWT = stateless
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/register", "/error", "/creationUser", "/color", "/type", "/material", "/addFurniture").permitAll()
+                        // 👇 Autorise l'accès public aux images uploadées
+                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/admin/**").hasAuthority("admin")
+
+                        // 👇 Autorise l'accès public à certaines routes
+                        .requestMatchers(
+                                "/login",
+                                "/register",
+                                "/error",
+                                "/creationUser",
+                                "/color",
+                                "/type",
+                                "/material",
+                                "/addFurniture",
+                                "/user/furnitures",
+                                "/admin/furnitures",
+                                "/furnitures/**",
+                                "/admin/furnitures/{id}/status"
+                        ).permitAll()
+
+                        // 👇 Toute autre requête nécessite un token valide
                         .anyRequest().authenticated()
                 )
+                // 👇 Ton filtre JWT doit rester en dernier
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // ⚠️ NE PAS mettre "*"
         configuration.setAllowedOriginPatterns(List.of("http://localhost:5173"));
         configuration.setAllowCredentials(true);
-
-        // Autorise tout type de méthode et header
         configuration.addAllowedHeader("*");
         configuration.addAllowedMethod("*");
 
-        // Headers exposés au client
+        // Headers exposés au front (JWT, Content-Type, etc.)
         configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

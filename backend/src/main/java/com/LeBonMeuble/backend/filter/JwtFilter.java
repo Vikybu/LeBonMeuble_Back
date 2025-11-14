@@ -2,18 +2,22 @@ package com.LeBonMeuble.backend.filter;
 
 import com.LeBonMeuble.backend.configuration.JwtUtils;
 import com.LeBonMeuble.backend.services.CustomUserDetailsService;
-import java.io.IOException;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -42,19 +46,29 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
 
             if (jwtUtils.validateToken(jwt, userDetails)) {
+
+                // 🔥 Récupération des claims depuis le token
+                Claims claims = jwtUtils.extractAllClaims(jwt);
+                String role = claims.get("role", String.class); // ADMIN / USER etc.
+
+                // 🔥 Convertit en "admin" pour matcher SecurityConfig
+                SimpleGrantedAuthority authority =
+                        new SimpleGrantedAuthority(role.toLowerCase());
+
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
-                                userDetails.getAuthorities()
+                                List.of(authority)
                         );
+
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-            } else {
-                logger.warn("Token JWT non valide pour l'utilisateur: " + email);
             }
         }
 

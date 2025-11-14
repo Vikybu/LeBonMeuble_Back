@@ -1,7 +1,11 @@
 package com.LeBonMeuble.backend.controllers;
 
+import com.LeBonMeuble.backend.DTO.UpdateStatusRequest;
 import com.LeBonMeuble.backend.entities.*;
 import com.LeBonMeuble.backend.repositories.*;
+import com.LeBonMeuble.backend.services.FurnitureService;
+import com.LeBonMeuble.backend.views.Views;
+import com.fasterxml.jackson.annotation.JsonView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -10,12 +14,14 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/addFurniture")
 public class FurnitureController {
 
+
+    private final FurnitureService furnitureService;
     private final FurnitureRepository furnitureRepository;
     private final ImageRepository imageRepository;
     private final TypeRepository typeRepository;
@@ -25,7 +31,7 @@ public class FurnitureController {
 
     private static final String UPLOAD_DIR = "uploads/";
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/furnitures", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> createFurniture(
             @RequestParam("name") String name,
             @RequestParam("description") String description,
@@ -82,7 +88,7 @@ public class FurnitureController {
 
             furnitureRepository.save(furniture);
 
-            return ResponseEntity.ok("✅ Meuble enregistré avec succès !");
+            return ResponseEntity.ok("Meuble enregistré avec succès !");
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Erreur lors de l'enregistrement de l'image : " + e.getMessage());
@@ -91,4 +97,38 @@ public class FurnitureController {
                     .body("Erreur inattendue : " + e.getMessage());
         }
     }
+
+    @GetMapping("/user/furnitures")
+    @JsonView(Views.FurnitureOutput.class)
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByStatusUser(){
+
+        List<EntityFurniture> furnitures;
+
+        furnitures = furnitureService.getFurnitureByStatus(FurnitureStatus.validated.name());
+
+        return ResponseEntity.ok(furnitures);
+    }
+
+
+    @GetMapping("/admin/furnitures")
+    @JsonView(Views.FurnitureOutput.class)
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByStatusAdmin(){
+
+        List<EntityFurniture> furnitures;
+
+            furnitures = furnitureService.getFurnitureByStatus(FurnitureStatus.on_hold.name());
+
+        return ResponseEntity.ok(furnitures);
+    }
+
+    @PutMapping("/admin/furnitures/{id}/status")
+    public ResponseEntity<?> updateStatusFurniture(
+            @PathVariable Long id,
+            @RequestBody UpdateStatusRequest request
+    ) {
+        furnitureService.updateStatus(id, request.getStatus());
+        return ResponseEntity.ok("Status updated");
+    }
 }
+
+

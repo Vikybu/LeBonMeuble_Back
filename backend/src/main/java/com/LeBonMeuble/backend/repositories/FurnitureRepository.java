@@ -3,4 +3,9 @@ package com.LeBonMeuble.backend.repositories;
 import com.LeBonMeuble.backend.entities.EntityFurniture;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface FurnitureRepository extends JpaRepository<EntityFurniture, Long> {}
+import java.util.List;
+
+public interface FurnitureRepository extends JpaRepository<EntityFurniture, Long> {
+    List<EntityFurniture> findByStatus(String status);
+
+}
