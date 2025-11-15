@@ -28,7 +28,10 @@ public class FurnitureService {
         EntityFurniture furniture = furnitureRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Furniture not found"));
 
-        furniture.setStatus(status);
         furnitureRepository.save(furniture);
+    }
+
+    public List<EntityFurniture> getFurnitureByUser(Long user_id) {
+        return furnitureRepository.findByUserId(user_id);
     }
 }

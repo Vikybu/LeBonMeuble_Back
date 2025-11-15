@@ -8,4 +8,6 @@ import java.util.List;
 public interface FurnitureRepository extends JpaRepository<EntityFurniture, Long> {
     List<EntityFurniture> findByStatus(String status);
 
+    List<EntityFurniture> findByUserId(Long user_id);
+
 }

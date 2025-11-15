@@ -66,7 +66,8 @@ public class SecurityConfig {
                                 "/user/furnitures",
                                 "/admin/furnitures",
                                 "/furnitures/**",
-                                "/admin/furnitures/{id}/status"
+                                "/admin/furnitures/{id}/status",
+                                "/user/{id}/furnitures/onSell"
                         ).permitAll()
 
                         // 👇 Toute autre requête nécessite un token valide

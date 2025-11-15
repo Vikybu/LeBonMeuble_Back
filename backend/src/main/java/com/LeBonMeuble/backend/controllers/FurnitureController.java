@@ -129,6 +129,16 @@ public class FurnitureController {
         furnitureService.updateStatus(id, request.getStatus());
         return ResponseEntity.ok("Status updated");
     }
+
+    @GetMapping("/user/{id}/furnitures/onSell")
+    @JsonView(Views.FurnitureOutput.class)
+    public ResponseEntity<List<EntityFurniture>> getFurnitureOnSellById(@PathVariable Long id) {
+
+        List<EntityFurniture> furnitures = furnitureService
+                .getFurnitureByUser(id);
+
+        return ResponseEntity.ok(furnitures);
+    }
 }
 
 
