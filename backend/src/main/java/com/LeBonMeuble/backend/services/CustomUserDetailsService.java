@@ -1,11 +1,14 @@
 package com.LeBonMeuble.backend.services;
 
+import com.LeBonMeuble.backend.DTO.UpdateUserDTO;
 import com.LeBonMeuble.backend.entities.EntityUser;
 import com.LeBonMeuble.backend.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;

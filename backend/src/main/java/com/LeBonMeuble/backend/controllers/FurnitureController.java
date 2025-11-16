@@ -139,6 +139,55 @@ public class FurnitureController {
 
         return ResponseEntity.ok(furnitures);
     }
+
+    @GetMapping("/user/furnitures/{id}")
+    @JsonView(Views.FurnitureOutput.class)
+    public ResponseEntity<?> getFurnitureById(@PathVariable Long id) {
+
+        EntityFurniture furniture = furnitureService.findById(id);
+
+        return ResponseEntity.ok(furniture);
+    }
+
+    @PutMapping("/user/furnitures/modify/{id}")
+    public ResponseEntity<?> updateFurniture(
+            @PathVariable Long id,
+            @RequestParam String name,
+            @RequestParam String description,
+            @RequestParam String price,
+            @RequestParam String status,
+            @RequestParam String width,
+            @RequestParam String height,
+            @RequestParam String length,
+            @RequestParam Long type_id,
+            @RequestParam Long color_id,
+            @RequestParam Long material_id,
+            @RequestParam(required = false) MultipartFile image
+    ) throws IOException {
+
+        EntityFurniture updated = furnitureService.updateFurniture(
+                id,
+                name,
+                description,
+                price,
+                status,
+                width,
+                height,
+                length,
+                type_id,
+                color_id,
+                material_id,
+                image
+        );
+
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/user/furnitures/delete/{id}")
+    public ResponseEntity<?> deleteFurnitureById (@PathVariable Long id) {
+        furnitureService.deleteFurniture(id);
+        return ResponseEntity.ok("Meuble supprimé avec succès");
+    }
 }
 
 

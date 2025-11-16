@@ -58,7 +58,7 @@ public class SecurityConfig {
                                 "/login",
                                 "/register",
                                 "/error",
-                                "/creationUser",
+                                "/user/create",
                                 "/color",
                                 "/type",
                                 "/material",
@@ -67,7 +67,12 @@ public class SecurityConfig {
                                 "/admin/furnitures",
                                 "/furnitures/**",
                                 "/admin/furnitures/{id}/status",
-                                "/user/{id}/furnitures/onSell"
+                                "/user/{id}/furnitures/onSell",
+                                "/user/furnitures/{id}",
+                                "/user/furnitures/modify/{id}",
+                                "/user/furnitures/delete/{id}",
+                                "/user/infos/{id}",
+                                "/user/profile/modify/{id}"
                         ).permitAll()
 
                         // 👇 Toute autre requête nécessite un token valide

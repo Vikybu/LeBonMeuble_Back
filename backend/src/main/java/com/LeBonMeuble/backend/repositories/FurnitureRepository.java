@@ -4,10 +4,14 @@ import com.LeBonMeuble.backend.entities.EntityFurniture;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface FurnitureRepository extends JpaRepository<EntityFurniture, Long> {
     List<EntityFurniture> findByStatus(String status);
 
     List<EntityFurniture> findByUserId(Long user_id);
+
+    Optional<EntityFurniture> findById(Long id);
+
 
 }
