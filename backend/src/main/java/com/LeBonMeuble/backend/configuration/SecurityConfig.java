@@ -72,7 +72,8 @@ public class SecurityConfig {
                                 "/user/furnitures/modify/{id}",
                                 "/user/furnitures/delete/{id}",
                                 "/user/infos/{id}",
-                                "/user/profile/modify/{id}"
+                                "/user/profile/modify/{id}",
+                                "/webhook"
                         ).permitAll()
 
                         // 👇 Toute autre requête nécessite un token valide
