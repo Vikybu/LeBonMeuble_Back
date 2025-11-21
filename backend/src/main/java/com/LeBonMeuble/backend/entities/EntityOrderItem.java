@@ -27,6 +27,6 @@ public class EntityOrderItem {
     private int quantity;
 
     @ManyToOne
-    @JoinColumn(name = "order_id")
+    @JoinColumn(name = "orders_id")
     private EntityOrder order;
 }

@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.ApiResource;
 import com.stripe.net.Webhook;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,68 +32,46 @@ public class WebhookController {
     private String webhookSecret;
 
     @PostMapping
-    public String handleStripeWebhook(HttpServletRequest request)
-            throws IOException {
+    public ResponseEntity<String> handleStripeWebhook(HttpServletRequest request) throws IOException {
 
-        String payload = request.getReader().lines().collect(Collectors.joining());
+        String payload = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         String sigHeader = request.getHeader("Stripe-Signature");
-
-        System.out.println(">>> SIG HEADER RECU = " + sigHeader);
-        System.out.println(">>> PAYLOAD = " + payload);
-
-        if (sigHeader == null) {
-            // Ne jamais throw → renvoie 200 sinon Stripe va spammer !
-            System.out.println(">>> ERROR: Missing Stripe-Signature");
-            return "";
-        }
 
         Event event;
 
         try {
             event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
-            System.out.println(">>> WEBHOOK SECRET UTILISÉ PAR SPRING = " + webhookSecret);
-
         } catch (SignatureVerificationException e) {
-            // Très important : NE PAS renvoyer une erreur 400 !
-            System.out.println(">>> ERROR: signature invalide");
-            return "";
+            System.out.println(">>> Invalid signature");
+            return ResponseEntity.ok("");
         }
 
         System.out.println(">>> EVENT TYPE = " + event.getType());
 
         if ("checkout.session.completed".equals(event.getType())) {
             try {
-                System.out.println(">>> CHECKOUT.SESSION.COMPLETED RECU");
+                var deserializer = event.getDataObjectDeserializer();
 
-                Session session = (Session) event.getDataObjectDeserializer()
-                        .getObject()
-                        .orElseThrow(() -> new IllegalStateException("Unable to deserialize event"));
+                String rawJson = deserializer.getRawJson();
+                Session session = ApiResource.GSON.fromJson(rawJson, Session.class);
 
+                System.out.println(">>> SESSION PARSED OK");
                 System.out.println(">>> METADATA = " + session.getMetadata());
 
                 String rawItems = session.getMetadata().get("order_items");
-                System.out.println(">>> RAW ITEMS = " + rawItems);
-
                 Long userId = Long.valueOf(session.getMetadata().get("user_id"));
-                System.out.println(">>> USER ID = " + userId);
 
-                Type listType = new TypeToken<List<CartItemDTO>>() {}.getType();
+                Type listType = new TypeToken<List<CartItemDTO>>() {
+                }.getType();
                 List<CartItemDTO> cartItems = new Gson().fromJson(rawItems, listType);
 
-                System.out.println(">>> ITEMS DESERIALIZED = " + cartItems);
-
-                System.out.println(">>> CREATION ORDER ...");
                 orderService.createOrder(userId, cartItems);
 
-                System.out.println(">>> ORDER CREATED OK !");
-
             } catch (Exception e) {
-                System.out.println(">>> ERROR IN HANDLER");
                 e.printStackTrace();
             }
-
         }
 
-        return "ok";
+        return ResponseEntity.ok("ok");
     }
 }
