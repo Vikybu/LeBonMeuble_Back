@@ -32,32 +32,41 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // 🔥 Bypass complet des routes publiques
+        String path = request.getServletPath();
+        if (path.startsWith("/auth")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
         String email = null;
         String jwt = null;
 
+        // 🔎 Extraction du token
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
             try {
                 email = jwtUtils.extractEmail(jwt);
             } catch (Exception e) {
-                logger.warn("JWT invalide ou expiré: " + e.getMessage());
+                logger.warn("JWT invalide ou expiré : " + e.getMessage());
             }
         }
 
+        // 🚨 Vérification de l'utilisateur uniquement si pas déjà authentifié
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
 
+            // 🔐 Vérification du token
             if (jwtUtils.validateToken(jwt, userDetails)) {
 
-                // 🔥 Récupération des claims depuis le token
                 Claims claims = jwtUtils.extractAllClaims(jwt);
-                String role = claims.get("role", String.class); // ADMIN / USER etc.
+                String role = claims.get("role", String.class);  // USER ou ADMIN attendu
 
-                // 🔥 Convertit en "admin" pour matcher SecurityConfig
+                // 🔥 Construction correcte de l'autorité : ROLE_USER, ROLE_ADMIN
                 SimpleGrantedAuthority authority =
-                        new SimpleGrantedAuthority(role.toLowerCase());
+                        new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
 
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
@@ -68,10 +77,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+                // 💾 Injection dans le SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
+        // Poursuite du filtre
         filterChain.doFilter(request, response);
     }
 }

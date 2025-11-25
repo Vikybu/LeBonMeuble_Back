@@ -13,12 +13,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.naming.AuthenticationException;
 import java.util.HashMap;
 import java.util.Map;
 
+@RequestMapping("/auth")
 @RestController
 @RequiredArgsConstructor
 @Slf4j

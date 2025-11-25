@@ -58,6 +58,7 @@ public class EntityFurniture {
     private EntityMaterial material;
 
     @ManyToOne
+    @JsonView(Views.FurnitureOutput.class)
     @JoinColumn(name = "user_id")
     private EntityUser user;
 

@@ -2,7 +2,7 @@ package com.LeBonMeuble.backend.configuration;
 
 import com.LeBonMeuble.backend.filter.JwtFilter;
 import com.LeBonMeuble.backend.services.CustomUserDetailsService;
-import com.LeBonMeuble.backend.configuration.JwtUtils;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,54 +33,45 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12); // force strength 12
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http, PasswordEncoder passwordEncoder) throws Exception {
-        AuthenticationManagerBuilder authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.userDetailsService(customUserDetailsService).passwordEncoder(passwordEncoder);
-        return authenticationManagerBuilder.build();
+    public AuthenticationManager authenticationManager(
+            HttpSecurity http, PasswordEncoder passwordEncoder
+    ) throws Exception {
+        AuthenticationManagerBuilder auth = http.getSharedObject(AuthenticationManagerBuilder.class);
+        auth.userDetailsService(customUserDetailsService).passwordEncoder(passwordEncoder);
+        return auth.build();
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
+
+                // ➤ NOUVELLE SYNTAXE : pas de .cors().and()
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // JWT = stateless
-                .authorizeHttpRequests(auth -> auth
-                        // 👇 Autorise l'accès public aux images uploadées
-                        .requestMatchers("/uploads/**").permitAll()
-                        .requestMatchers("/admin/**").hasAuthority("admin")
 
-                        // 👇 Autorise l'accès public à certaines routes
-                        .requestMatchers(
-                                "/login",
-                                "/register",
-                                "/error",
-                                "/user/create",
-                                "/color",
-                                "/type",
-                                "/material",
-                                "/addFurniture",
-                                "/user/furnitures",
-                                "/admin/furnitures",
-                                "/furnitures/**",
-                                "/admin/furnitures/{id}/status",
-                                "/user/{id}/furnitures/onSell",
-                                "/user/furnitures/{id}",
-                                "/user/furnitures/modify/{id}",
-                                "/user/furnitures/delete/{id}",
-                                "/user/infos/{id}",
-                                "/user/profile/modify/{id}",
-                                "/webhook"
-                        ).permitAll()
-
-                        // 👇 Toute autre requête nécessite un token valide
-                        .anyRequest().authenticated()
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                // 👇 Ton filtre JWT doit rester en dernier
+
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, exc) ->
+                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+                        )
+                )
+
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/admin/**").hasAuthority("admin")
+                        .requestMatchers("/user/**").authenticated()
+                        .requestMatchers("/login").permitAll()
+                        .anyRequest().permitAll()
+                )
+
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -87,18 +79,16 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+        CorsConfiguration config = new CorsConfiguration();
 
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173"));
-        configuration.setAllowCredentials(true);
-        configuration.addAllowedHeader("*");
-        configuration.addAllowedMethod("*");
-
-        // Headers exposés au front (JWT, Content-Type, etc.)
-        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedOriginPatterns(List.of("http://localhost:5173"));
+        config.setAllowCredentials(true);
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/**", config);
 
         return source;
     }

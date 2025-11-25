@@ -8,6 +8,7 @@ import com.LeBonMeuble.backend.views.Views;
 import com.fasterxml.jackson.annotation.JsonView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,8 +19,8 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping
 public class FurnitureController {
-
 
     private final FurnitureService furnitureService;
     private final FurnitureRepository furnitureRepository;
@@ -31,6 +32,9 @@ public class FurnitureController {
 
     private static final String UPLOAD_DIR = "uploads/";
 
+    // -----------------------------
+    //       CREATE FURNITURE
+    // -----------------------------
     @PostMapping(path = "/furnitures", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> createFurniture(
             @RequestParam("name") String name,
@@ -47,7 +51,7 @@ public class FurnitureController {
             @RequestParam("image") MultipartFile imageFile
     ) {
         try {
-            // Vérification des entités liées
+            // Vérification des relations
             EntityType type = typeRepository.findById(typeId).orElse(null);
             EntityColor color = colorRepository.findById(colorId).orElse(null);
             EntityMaterial material = materialRepository.findById(materialId).orElse(null);
@@ -57,7 +61,7 @@ public class FurnitureController {
                 return ResponseEntity.badRequest().body("Une clé étrangère est invalide !");
             }
 
-            // Enregistrement de l'image
+            // Upload image
             File uploadDir = new File(UPLOAD_DIR);
             if (!uploadDir.exists()) uploadDir.mkdirs();
 
@@ -65,11 +69,11 @@ public class FurnitureController {
             Path filePath = Paths.get(UPLOAD_DIR + fileName);
             Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Sauvegarde de l'image en base
-            EntityImage imageEntity = new EntityImage();
-            imageEntity.setImage_url("/uploads/" + fileName);
-            imageEntity.setAlt_text("Image du meuble " + name);
-            imageRepository.save(imageEntity);
+            // Enregistrer image DB
+            EntityImage img = new EntityImage();
+            img.setImage_url("/uploads/" + fileName);
+            img.setAlt_text("Image du meuble " + name);
+            imageRepository.save(img);
 
             // Création du meuble
             EntityFurniture furniture = new EntityFurniture();
@@ -84,41 +88,49 @@ public class FurnitureController {
             furniture.setType(type);
             furniture.setMaterial(material);
             furniture.setColor(color);
-            furniture.setImage(imageEntity);
+            furniture.setImage(img);
 
             furnitureRepository.save(furniture);
 
             return ResponseEntity.ok("Meuble enregistré avec succès !");
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de l'enregistrement de l'image : " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur inattendue : " + e.getMessage());
+                    .body("Erreur d'image : " + e.getMessage());
         }
     }
 
+    // -----------------------------
+    //   PUBLIC GET – VALIDATED
+    // -----------------------------
+    @GetMapping("/furnitures")
+    @JsonView(Views.FurnitureOutput.class)
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByStatusUser() {
+        return ResponseEntity.ok(
+                furnitureService.getFurnitureByStatus(FurnitureStatus.validated.name())
+        );
+    }
+
+    // -----------------------------
+    //   USER GET – VALIDATED
+    // -----------------------------
     @GetMapping("/user/furnitures")
     @JsonView(Views.FurnitureOutput.class)
-    public ResponseEntity<List<EntityFurniture>> getFurnitureByStatusUser(){
+    public ResponseEntity<?> getAllFurnitureForUser() {
 
-        List<EntityFurniture> furnitures;
-
-        furnitures = furnitureService.getFurnitureByStatus(FurnitureStatus.validated.name());
+        List<EntityFurniture> furnitures = furnitureService.getFurnitureByStatus("validated");
 
         return ResponseEntity.ok(furnitures);
     }
 
-
+    // -----------------------------
+    //   ADMIN – ON HOLD
+    // -----------------------------
     @GetMapping("/admin/furnitures")
     @JsonView(Views.FurnitureOutput.class)
-    public ResponseEntity<List<EntityFurniture>> getFurnitureByStatusAdmin(){
-
-        List<EntityFurniture> furnitures;
-
-            furnitures = furnitureService.getFurnitureByStatus(FurnitureStatus.on_hold.name());
-
-        return ResponseEntity.ok(furnitures);
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByStatusAdmin() {
+        return ResponseEntity.ok(
+                furnitureService.getFurnitureByStatus(FurnitureStatus.on_hold.name())
+        );
     }
 
     @PutMapping("/admin/furnitures/{id}/status")
@@ -130,25 +142,53 @@ public class FurnitureController {
         return ResponseEntity.ok("Status updated");
     }
 
+    // -----------------------------
+    //   USER – LIST OWN ITEMS
+    // -----------------------------
     @GetMapping("/user/{id}/furnitures/onSell")
     @JsonView(Views.FurnitureOutput.class)
     public ResponseEntity<List<EntityFurniture>> getFurnitureOnSellById(@PathVariable Long id) {
-
-        List<EntityFurniture> furnitures = furnitureService
-                .getFurnitureByUser(id);
-
-        return ResponseEntity.ok(furnitures);
+        return ResponseEntity.ok(furnitureService.getFurnitureByUser(id));
     }
 
-    @GetMapping("/user/furnitures/{id}")
+    // -----------------------------
+    //     PUBLIC GET BY ID
+    // -----------------------------
+    @GetMapping("/furnitures/{id}")
     @JsonView(Views.FurnitureOutput.class)
     public ResponseEntity<?> getFurnitureById(@PathVariable Long id) {
+        return ResponseEntity.ok(furnitureService.findById(id));
+    }
+
+    // -----------------------------
+    //   USER – GET OWN FURNITURE
+    // -----------------------------
+    @GetMapping("/user/furnitures/{id}")
+    @JsonView(Views.FurnitureOutput.class)
+    public ResponseEntity<?> getUserFurnitureById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal EntityUser userConnected
+    ) {
+
+        if (userConnected == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Utilisateur non connecté");
+        }
 
         EntityFurniture furniture = furnitureService.findById(id);
+
+        if (furniture == null)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meuble introuvable");
+
+        if (!furniture.getUser().getId().equals(userConnected.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
 
         return ResponseEntity.ok(furniture);
     }
 
+    // -----------------------------
+    //     UPDATE (OWNER ONLY)
+    // -----------------------------
     @PutMapping("/user/furnitures/modify/{id}")
     public ResponseEntity<?> updateFurniture(
             @PathVariable Long id,
@@ -162,32 +202,53 @@ public class FurnitureController {
             @RequestParam Long type_id,
             @RequestParam Long color_id,
             @RequestParam Long material_id,
-            @RequestParam(required = false) MultipartFile image
+            @RequestParam(required = false) MultipartFile image,
+            @AuthenticationPrincipal EntityUser userConnected
     ) throws IOException {
 
-        EntityFurniture updated = furnitureService.updateFurniture(
-                id,
-                name,
-                description,
-                price,
-                status,
-                width,
-                height,
-                length,
-                type_id,
-                color_id,
-                material_id,
-                image
-        );
+        EntityFurniture furniture = furnitureService.getFurnitureById(id);
 
-        return ResponseEntity.ok(updated);
+        if (furniture == null)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Furniture not found");
+
+        if (!furniture.getUser().getId().equals(userConnected.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Vous ne pouvez pas modifier ce meuble");
+
+        return ResponseEntity.ok(
+                furnitureService.updateFurniture(
+                        id, name, description, price, status,
+                        width, height, length, type_id, color_id, material_id, image
+                )
+        );
     }
 
+    // -----------------------------
+    //   DELETE (OWNER ONLY)
+    // -----------------------------
     @DeleteMapping("/user/furnitures/delete/{id}")
-    public ResponseEntity<?> deleteFurnitureById (@PathVariable Long id) {
+    public ResponseEntity<?> deleteFurnitureById(@PathVariable Long id) {
         furnitureService.deleteFurniture(id);
         return ResponseEntity.ok("Meuble supprimé avec succès");
     }
+
+    // -----------------------------
+    //   FILTER
+    // -----------------------------
+    @GetMapping("/user/furnitures/filter/{material}/{color}/{type}")
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByFilters(
+            @PathVariable String material,
+            @PathVariable String color,
+            @PathVariable String type
+    ) {
+        Long materialId = material.equals("all") ? null : Long.parseLong(material);
+        Long colorId = color.equals("all") ? null : Long.parseLong(color);
+        Long typeId = type.equals("all") ? null : Long.parseLong(type);
+
+        return ResponseEntity.ok(
+                furnitureService.filterByMaterialColorType(
+                        "validated", materialId, colorId, typeId
+                )
+        );
+    }
 }
-
-

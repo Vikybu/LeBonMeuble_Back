@@ -37,6 +37,10 @@ public class FurnitureService {
         furnitureRepository.save(furniture);
     }
 
+    public EntityFurniture getFurnitureById(Long id) {
+        return furnitureRepository.findById(id).orElse(null);
+    }
+
     // Trouver les meubles d’un user
     public List<EntityFurniture> getFurnitureByUser(Long userId) {
         return furnitureRepository.findByUserId(userId);
@@ -119,6 +123,11 @@ public class FurnitureService {
         img.setAlt_text("image meuble");
         img.setImage_url("/images/" + file.getOriginalFilename());
         return imageRepository.save(img);
+    }
+
+    public List<EntityFurniture> filterByMaterialColorType(String status, Long material, Long color, Long type){
+
+        return furnitureRepository.findByStatusWithFilters(status, material, color, type);
     }
 }
 
