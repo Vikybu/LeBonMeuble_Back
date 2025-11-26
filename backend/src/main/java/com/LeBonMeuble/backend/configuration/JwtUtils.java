@@ -9,9 +9,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.security.Key;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 @Component
@@ -24,24 +22,27 @@ public class JwtUtils {
     private Long expirationTime;
 
     /**
-     * Génère un token JWT avec :
-     *  - id utilisateur
+     * Génère un token JWT :
+     *  - id
      *  - firstname
-     *  - role (normalisé en minuscules)
+     *  - role formaté en ROLE_ADMIN / ROLE_USER
+     *  - authorities compatible Spring Security
      */
     public String generateToken(UserDetails userDetails, String firstname, Long id) {
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("id", id);
-        claims.put("firstname", firstname);
 
-        // 🔥 Normalisation du rôle : "ROLE_USER" → "user"
+        // Récupération du rôle Spring Security (e.g. ROLE_ADMIN)
         String role = userDetails.getAuthorities().stream()
                 .findFirst()
-                .map(auth -> auth.getAuthority().replace("ROLE_", "").toLowerCase())
-                .orElse("user");
+                .map(auth -> auth.getAuthority().toUpperCase())  // 🔥 FORCÉ en majuscules
+                .orElse("ROLE_USER");
 
-        claims.put("role", role);
+        // Claims utiles
+        claims.put("id", id);
+        claims.put("firstname", firstname);
+        claims.put("role", role.replace("ROLE_", "").toLowerCase()); // admin / user
+        claims.put("authorities", List.of(role)); // e.g. ["ROLE_ADMIN"]
 
         return createToken(claims, userDetails.getUsername());
     }
@@ -61,9 +62,7 @@ public class JwtUtils {
         return new SecretKeySpec(keyBytes, SignatureAlgorithm.HS256.getJcaName());
     }
 
-    /**
-     * Vérification complète du token JWT
-     */
+    /** Vérification complète du token JWT */
     public Boolean validateToken(String token, UserDetails userDetails) {
         try {
             String email = extractEmail(token);
@@ -95,17 +94,13 @@ public class JwtUtils {
         return extractExpirationDate(token).before(new Date());
     }
 
-    /**
-     * Méthode générique pour extraire n'importe quel claim
-     */
+    /** Méthode générique pour extraire n'importe quel claim */
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
         final Claims claims = extractAllClaims(token);
         return resolver.apply(claims);
     }
 
-    /**
-     * Extraction brute des claims
-     */
+    /** Extraction brute des claims */
     public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSignKey())

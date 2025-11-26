@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -32,8 +33,9 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        // 🔥 Bypass complet des routes publiques
         String path = request.getServletPath();
+
+        // 🔥 On laisse passer les routes publiques
         if (path.startsWith("/auth")) {
             filterChain.doFilter(request, response);
             return;
@@ -43,17 +45,17 @@ public class JwtFilter extends OncePerRequestFilter {
         String email = null;
         String jwt = null;
 
-        // 🔎 Extraction du token
+        // 🔎 Extraction du token dans Authorization: Bearer xxx
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
             try {
                 email = jwtUtils.extractEmail(jwt);
             } catch (Exception e) {
-                logger.warn("JWT invalide ou expiré : " + e.getMessage());
+                logger.warn("JWT invalide : " + e.getMessage());
             }
         }
 
-        // 🚨 Vérification de l'utilisateur uniquement si pas déjà authentifié
+        // ⚠️ On n’authentifie que si pas déjà fait
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
@@ -62,27 +64,31 @@ public class JwtFilter extends OncePerRequestFilter {
             if (jwtUtils.validateToken(jwt, userDetails)) {
 
                 Claims claims = jwtUtils.extractAllClaims(jwt);
-                String role = claims.get("role", String.class);  // USER ou ADMIN attendu
 
-                // 🔥 Construction correcte de l'autorité : ROLE_USER, ROLE_ADMIN
-                SimpleGrantedAuthority authority =
-                        new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+                // 🔥 Récupération des vrais rôles du token
+                List<String> roles = claims.get("authorities", List.class);
 
+                // Transformation → Spring Authorities
+                List<SimpleGrantedAuthority> authorities = roles.stream()
+                        .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r.toUpperCase())
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
+
+                // 🔥 Construction du token Spring sécurisé
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
-                                List.of(authority)
+                                authorities
                         );
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // 💾 Injection dans le SecurityContext
+                // 💾 Injection
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
-        // Poursuite du filtre
         filterChain.doFilter(request, response);
     }
 }

@@ -25,7 +25,7 @@ public class UserController {
     }
 
     // 🔹 Création d’un utilisateur
-    @PostMapping("/user/create")
+    @PostMapping("/create")
     public ResponseEntity<String> addUser(@RequestBody EntityUser user) {
         try {
             user.setPassword(passwordEncoder.encode(user.getPassword()));

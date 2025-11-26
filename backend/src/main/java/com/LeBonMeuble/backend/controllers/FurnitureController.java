@@ -180,8 +180,9 @@ public class FurnitureController {
         if (furniture == null)
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meuble introuvable");
 
-        if (!furniture.getUser().getId().equals(userConnected.getId()))
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
+
+        //if (!furniture.getUser().getId().equals(userConnected.getId()))
+        //    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès refusé");
 
         return ResponseEntity.ok(furniture);
     }
@@ -233,10 +234,30 @@ public class FurnitureController {
     }
 
     // -----------------------------
-    //   FILTER
+    //   FILTER - NOT CONNECTED
+    // -----------------------------
+    @GetMapping("/furnitures/filter/{material}/{color}/{type}")
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByFilters(
+            @PathVariable String material,
+            @PathVariable String color,
+            @PathVariable String type
+    ) {
+        Long materialId = material.equals("all") ? null : Long.parseLong(material);
+        Long colorId = color.equals("all") ? null : Long.parseLong(color);
+        Long typeId = type.equals("all") ? null : Long.parseLong(type);
+
+        return ResponseEntity.ok(
+                furnitureService.filterByMaterialColorType(
+                        "validated", materialId, colorId, typeId
+                )
+        );
+    }
+
+    // -----------------------------
+    //   FILTER - CONNECTED
     // -----------------------------
     @GetMapping("/user/furnitures/filter/{material}/{color}/{type}")
-    public ResponseEntity<List<EntityFurniture>> getFurnitureByFilters(
+    public ResponseEntity<List<EntityFurniture>> getFurnitureByFiltersUser(
             @PathVariable String material,
             @PathVariable String color,
             @PathVariable String type
